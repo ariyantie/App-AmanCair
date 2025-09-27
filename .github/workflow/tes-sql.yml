@@ -1,0 +1,47 @@
+name: Test danacita_schema_full_final.sql
+
+on:
+  push:
+    paths:
+      - 'danacita_schema_full_final.sql'
+  pull_request:
+    paths:
+      - 'danacita_schema_full_final.sql'
+
+jobs:
+  test-sql:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:5.7
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: test_danacita
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Wait for MySQL to be ready
+        run: |
+          for i in {30..0}; do
+            if mysqladmin ping -h"127.0.0.1" --silent; then
+              break
+            fi
+            echo 'Waiting for MySQL...'
+            sleep 1
+          done
+
+      - name: Import SQL Schema
+        run: |
+          mysql -h 127.0.0.1 -u root -proot test_danacita < danacita_schema_full_final.sql
+
+      - name: Test show tables
+        run: |
+          mysql -h 127.0.0.1 -u root -proot -e "USE test_danacita; SHOW TABLES;"
